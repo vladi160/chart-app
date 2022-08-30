@@ -8,10 +8,12 @@
  * When running `npm run build` or `npm run build:main`, this file is compiled to
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
+import settings from 'electron-settings';
 import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import { getDataFromFile } from '../main/helpers';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
@@ -25,10 +27,29 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
-ipcMain.on('ipc-example', async (event, arg) => {
-  const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-  console.log(msgTemplate(arg));
-  event.reply('ipc-example', msgTemplate('pong'));
+ipcMain.on('save-settings', (event, key, val) => {
+
+  const settingsObj = settings.getSync();
+  settingsObj[key] = val;
+  settings.setSync(settingsObj);
+});
+
+ipcMain.handle('get-data', async (event) => {
+
+  const path = settings.getSync('path');
+
+  if (!path) return null;
+  try {
+    return getDataFromFile(path);
+  } catch (err) {
+    console.log(err.message);
+    return err.message;
+  }
+
+});
+
+ipcMain.handle('get-setting', (event, arg) => {
+  return settings.getSync(arg);
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -75,11 +96,16 @@ const createWindow = async () => {
     height: 728,
     icon: getAssetPath('icon.png'),
     webPreferences: {
+      //enableRemoteModule: true,
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),
     },
   });
+
+
+
+
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 
@@ -123,6 +149,7 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
 
 app
   .whenReady()

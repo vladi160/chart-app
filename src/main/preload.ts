@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-
+const fs = require('fs');
 export type Channels = 'ipc-example';
 
 contextBridge.exposeInMainWorld('electron', {
@@ -18,4 +18,21 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.once(channel, (_event, ...args) => func(...args));
     },
   },
+  sendPath(channel: 'path', args: String) {
+    ipcRenderer.send(channel, args);
+  },
+  saveSettings(channel: 'save-settings', key: String, val: String) {
+    ipcRenderer.send(channel, key, val);
+  },
+  async getSetting(channel: 'get-setting', arg: String) {
+    const setting = await ipcRenderer.invoke(channel, arg);
+    return setting;
+  }
+
+  ,
+  async getData(channel: 'get-data') {
+    const data = await ipcRenderer.invoke(channel);
+    return data;
+  },
+
 });
